@@ -1,174 +1,212 @@
 # CryptoPulse Monitor
 
-Next.js（App Router + TypeScript + Tailwind）即時監控站，讀 `perpl_snapshot_collector.py`
-（`perpl-single-hardcap-compare` 分支，`Dockerfile.snapshot` 獨立 Railway service）寫進
-Postgres 的 orderbook 快照，視覺化成漸層熱圖 + 多幣種動量比較。詳細需求見 [`SPEC.md`](./SPEC.md)。
+A real-time market monitor built with Next.js (App Router + TypeScript + Tailwind). It reads
+Perpl orderbook snapshots that a separate collector service (`perpl_snapshot_collector.py`,
+deployed as its own Railway service via `Dockerfile.snapshot`) writes to Postgres. The app
+draws them as a gradient heatmap next to a multi-coin momentum comparison. Detailed
+requirements are in [`SPEC.md`](./SPEC.md).
 
-## 執行
+## Running
 
 ```bash
 npm install
-npm run dev   # http://localhost:3000 — 自訂 Node.js server（server.ts），不是 `next dev`
+npm run dev   # http://localhost:3000 — custom Node.js server (server.ts), not `next dev`
 ```
 
-**這個專案不能用 `next dev`/`next start` 跑**——`npm run dev`/`npm run start` 實際跑的是
-`tsx server.ts`（見下方「即時推播」）：一個自訂 Node.js server，`app.prepare()` 把 Next.js
-準備好之後，同一個 http.Server 上同時掛 Next.js 的 request handler + HMR websocket +
-我們自己的 `/ws/momentum` WebSocket server。這代表：
-- 一定要是長駐 Node.js 進程（Railway/自架都可以），**不能部署在 Vercel serverless**
-  （custom server 架構本來就跟 serverless function 互斥）。
-- `npm run build` 還是原本的 `next build`，跟 custom server 無關（`server.ts` 是用
-  `tsx` 直接執行，不經過 Next 自己的 webpack/turbopack 打包）。
-- Dev 模式跑完 `next build` 之後如果又跑過 `npm run dev`，`.next` 會被 dev 模式的
-  產物弄髒，`npm run start` 會報 "Could not find a production build"——要 `rm -rf .next`
-  重新 `npm run build` 一次才能再用 `npm run start`。
+**This project cannot be run with `next dev` / `next start`.** `npm run dev` / `npm run start`
+actually run `tsx server.ts` (see "Real-time push" below). That is a custom Node.js server: after
+`app.prepare()` sets up Next.js, one `http.Server` serves three things together: the Next.js
+request handler, the HMR WebSocket, and our own `/ws/momentum` WebSocket server. This means:
 
-## 環境變數（`.env` / `.env.local`）
+- It must run as a long-lived Node.js process (Railway or self-hosted both work). **It cannot be
+  deployed to Vercel serverless**, because a custom server can't run inside serverless functions.
+- `npm run build` is still plain `next build` and has nothing to do with the custom server.
+  `server.ts` is executed directly by `tsx` and never goes through Next's webpack/turbopack
+  bundling.
+- Running `npm run dev` after `next build` leaves dev-mode output in `.next`. After that,
+  `npm run start` fails with "Could not find a production build". Run `rm -rf .next` and then
+  `npm run build` again before using `npm run start`.
+
+## Environment variables (`.env` / `.env.local`)
 
 ```
-POSTGRES_URL="postgresql://..."   # Railway Postgres，跟收集端共用同一個資料庫
-TABLE_NAME="BookSnapshot"         # 收集端實際寫入的表名（見下方「資料來源」）
+POSTGRES_URL="postgresql://..."   # Postgres database shared with the collector
+TABLE_NAME="BookSnapshot"         # Table the collector writes to (see "Data sources" below)
 ```
 
-`.env` 已含目前可用的連線字串（gitignored，不會進版控）。
+`.env` files are gitignored. Create your own with your connection string.
 
-## 部署到 Railway
+## Deploying to Railway
 
-- **Root Directory** 留空（repo 根目錄就是這個服務）。
-- **Dockerfile Path** 設成 `dockerfile_web`。多階段 build：第一階段裝完整依賴（含 devDependencies）
-  跑 `next build`，第二階段只裝 production 依賴 + 複製 `.next` 編譯產物 + `server.ts`
-  跟它需要的 `lib/` 原始碼（custom server 用 `tsx` 在 runtime 直接轉譯執行，不是
-  `next start`，所以 runtime image 需要原始碼而不只是編譯產物）。
-- **Variables**：把 `.env` 裡的 `POSTGRES_URL`、`TABLE_NAME` 一模一樣設進 Railway 的
-  Variables 分頁——`.env` 本身被 `.dockerignore` 排除、不會進 Docker image，Railway
-  完全讀不到這個檔案，一定要手動在那邊設一份。`PORT`/`NODE_ENV` 不用設，Railway 會
-  自己注入 `PORT`，`dockerfile_web` 裡已經 `ENV NODE_ENV=production`。
-- Container 收到 SIGTERM（Railway 重部署/停止服務）時，`server.ts` 會在 ~1.5 秒內
-  乾淨退出（見上面「執行」的說明跟下方即時推播段落）；`dockerfile_web` 的 `CMD`
-  直接 exec `tsx`（不是 `npm run start`），避免 npm 包一層對訊號轉發不可靠的問題。
+- **Root Directory**: leave empty (the repo root is the service).
+- **Dockerfile Path**: set to `dockerfile_web`. The build has two stages:
+  1. Install all dependencies, including devDependencies, and run `next build`.
+  2. Install only production dependencies, then copy in the compiled `.next` output plus
+     `server.ts` and the `lib/` source it imports. The custom server is transpiled at runtime
+     by `tsx` rather than started with `next start`, so the runtime image needs the source
+     files as well as the build output.
+- **Variables**: set `POSTGRES_URL` and `TABLE_NAME` in Railway's Variables tab, with the same
+  values as your `.env`. `.dockerignore` excludes `.env`, so the file never reaches the Docker
+  image and Railway can't read it. You don't need to set `PORT` or `NODE_ENV`: Railway injects
+  `PORT`, and `dockerfile_web` already sets `ENV NODE_ENV=production`.
+- When the container receives SIGTERM (a Railway redeploy or service stop), `server.ts` shuts
+  down cleanly within about 1.5 seconds. The `CMD` in `dockerfile_web` execs `tsx` directly
+  rather than `npm run start`, because npm doesn't forward signals reliably.
 
-## 資料來源——兩條完全獨立的管線
+## Data sources: two fully independent pipelines
 
-這個站現在混合兩種資料來源，**分別對應不同頁面區塊，互不依賴**：
+The site uses two data sources. **Each feeds a different part of the page, and neither depends
+on the other.**
 
-### 1. Orderbook 熱圖（Perpl，讀 Postgres）
+### 1. Orderbook heatmap (Perpl, read from Postgres)
 
-`perpl_snapshot_collector.py` + `libs/feeds.py`（`perpl-single-hardcap-compare` 分支，
-**不是** `perpl-single`）持續把 Perpl orderbook 快照批次寫進 Postgres 表 `"BookSnapshot"`
-（大小寫混合，SQL 需雙引號；schema 沿用 `tests/perpl/trade_cache.py` 的
-`TradeCache`：`kind='signal_snapshot'`、`ts`(ms)、`raw`(JSONB)）。`lib/db.ts` 是最底層
-的 Postgres 查詢函式（`fetchTicks`/`fetchCoinSummaries`/`fetchPriceNear`）。
+The collector (`perpl_snapshot_collector.py` + `libs/feeds.py`) keeps batch-writing Perpl
+orderbook snapshots into the Postgres table `"BookSnapshot"`. The name is mixed-case, so SQL
+must double-quote it. Each row has `kind='signal_snapshot'`, `ts` (ms) and `raw` (JSONB).
+`lib/db.ts` holds the low-level Postgres queries (`fetchTicks` / `fetchCoinSummaries` /
+`fetchPriceNear`).
 
-2026-09-05 起，`app/page.tsx`、`/api/ticks`、`/api/coins` **不再直接查 Postgres**，改讀
-`lib/bookCache.ts` 的記憶體快取，`server.ts` 啟動時（`app.prepare()` 之後、
-`server.listen()` 之前）分兩階段預載：
+`app/page.tsx`, `/api/ticks` and `/api/coins` **don't query Postgres directly**. They read an
+in-memory cache in `lib/bookCache.ts`. `server.ts` preloads that cache in two phases, after
+`app.prepare()` and before `server.listen()`:
 
-1. **阻塞階段**——先 `await` 把每個幣種「過去 30 分鐘」的歷史撈進記憶體，`server.listen()`
-   等這一步做完才放行。30 分鐘覆蓋熱圖預設/最常用的時窗，一次抓一天份（BTC 一天約
-   6~9 萬筆）反而會拖慢開機（實測差在 ~1.5 秒 vs 好幾秒）。
-2. **背景階段**——`start()` 回傳之後（server 已經在 serve 了）繼續把每個幣種往回補到
-   完整 24 小時的保留窗（熱圖最長的時窗選項就是 24h），不擋任何 request；補完之前
-   2h/12h/24h 這種較長時窗看到的資料會比較少，補完後下一次前端輪詢自動變完整。
+1. **Blocking phase**: load each coin's last 30 minutes of history into memory. `server.listen()`
+   waits for this step. 30 minutes covers the heatmap's default and most-used window. Loading a
+   full day up front (roughly 60–90k rows for BTC alone) would slow startup from about 1.5
+   seconds to several seconds.
+2. **Background phase**: once `start()` returns and the server is already serving, backfill each
+   coin to the full 24-hour retention window (24h is the heatmap's longest window option). This
+   doesn't block any request. Until it finishes, the 2h/12h/24h windows show less data. The
+   next frontend poll after the backfill picks up the full history automatically.
 
-之後背景每分鐘刷新一次（只補新資料，刷新失敗會保留舊快取、不會讓畫面資料整批消失）。
-好處：多個瀏覽器分頁同時開著也只打一次 DB，而且 server 剛啟動、還沒開始 serve 就已經
-有資料可以回，不會出現「剛開機時熱圖顯示沒資料」的空窗期。`/api/price-ref`（算 24h
-漲跌幅用的參考價）維持直接查 DB，沒有走快取——那是低頻查詢，快取的複雜度不划算。
-餵給 `components/Heatmap.tsx` 的 `raw` 欄位：
+After that, the cache refreshes in the background every minute and fetches only new rows. If a
+refresh fails, the old cache stays in place, so data never vanishes from the screen. Two
+benefits:
 
-| 欄位 | 說明 |
+- Many open browser tabs still cost only one DB query.
+- The server has data before it starts serving, so the heatmap is never empty right after
+  startup.
+
+`/api/price-ref` (the reference price for the 24h change) still queries the DB directly. It is
+called rarely, so caching it wasn't worth the extra complexity.
+
+The `raw` fields that `components/Heatmap.tsx` consumes:
+
+| Field | Description |
 |---|---|
 | `ts` | epoch seconds |
-| `coin` | 幣種代碼 |
-| `depth` | 這筆快照取樣的深度檔數（目前收集 = 3） |
-| `bid_usd` / `ask_usd` | 前 `depth` 檔加總美金深度 |
-| `bid1_usd` / `ask1_usd` | 第一檔（頂檔）美金深度 |
-| `bids_detail` / `asks_detail` | 逐檔 `[price, size]`，由頂檔到最差價 |
-| `ask_over_bid` / `bid_over_ask` | 深度比 |
-| `momentum_bias` | collector 端算好的 -100~+100 動能綜合分（不影響本站，僅供 `/coin/[symbol]` 明細表對照參考） |
-| `perpl_mid` / `binance_mid` / `basis_bps` | 兩所中價與價差(bps) |
+| `coin` | coin symbol |
+| `depth` | number of levels sampled in this snapshot (currently 3) |
+| `bid_usd` / `ask_usd` | summed USD depth of the top `depth` levels |
+| `bid1_usd` / `ask1_usd` | USD depth at the top of book (level 1) |
+| `bids_detail` / `asks_detail` | per-level `[price, size]`, from top of book outward |
+| `ask_over_bid` / `bid_over_ask` | depth ratios |
+| `momentum_bias` | composite momentum score (-100 to +100) computed by the collector. The dashboard doesn't use it; it appears only as a reference column in the `/coin/[symbol]` detail table. |
+| `perpl_mid` / `binance_mid` / `basis_bps` | mid prices on both venues and the basis between them (bps) |
 
-**已知落差**：SPEC 設想熱圖 Y 軸涵蓋上下 25 檔，實際收集 `depth=3`（`Heatmap.tsx`
-用連續 bps 分桶而非離散檔位索引，資料變豐富時前端不用改，但要看到 25 檔解析度
-需要把 `PERPL_SNAPSHOT_DEPTH` 調大並重新部署 Railway——資料管線端的事）。
+**Known gap**: the SPEC wants the heatmap's Y axis to cover 25 levels on each side, but the
+collector currently samples only `depth=3`. `Heatmap.tsx` buckets by continuous bps offsets
+rather than discrete level indices, so the frontend won't need changes when richer data arrives.
+Getting 25-level resolution means raising `PERPL_SNAPSHOT_DEPTH` on the collector and
+redeploying it.
 
-### 2. 動量比較面板（Binance，即時監聽，不查 DB）
+### 2. Momentum comparison panel (Binance, live stream, no DB)
 
-`components/MomentumPanel.tsx` **完全不讀 Postgres**。改成 TS 直接移植
-`libs/feeds.py` + `libs/indicators.py`（同一個 `perpl-single-hardcap-compare` 分支）：
+`components/MomentumPanel.tsx` **never reads Postgres**. It runs a direct TypeScript port of the
+collector's `libs/feeds.py` + `libs/indicators.py`:
 
-- `lib/binanceFeed.ts` — 對每個幣種各開一條 Binance WS（`<symbol>@trade` +
-  `<symbol>@kline_1m` 合併訂閱），逐筆存 `isBuy`（`!isBuyerMaker`，即主動買方）；
-  REST 輪詢現貨 order book 當備援。跟 Python 版一樣斷線 5 秒後原地重連。
-- `lib/indicators.ts` — 逐函式移植 `obi/walls/cvd/rsi/macd/vwap/emas/heikinAshi/
-  volProfile/biasScore/scoreTrend`，常數照抄 `libs/config.py`。跟原本只存
-  折算後單一 `momentum_bias` 不同：這裡**每個指標分開回傳**（`computeBreakdown()`），
-  MomentumPanel 也分開顯示，另外還直接拆開「主動買/主動賣」的原始美金量與筆數
-  （`activeBuySell5m`），不只是折算成 CVD 的正負號。
-- `lib/marketState.ts` — process 內單例，管理全部幣種的 runtime state + 5 秒一次的
-  bias 歷史取樣（給 sparkline 用）。由 `server.ts` 在 `app.prepare()` 完成後直接呼叫
-  一次 `start()`；`/api/momentum` 也會保險呼叫一次（`started` 旗標擋重複，不會重開
-  連線）。`globalThis` 掛載避免 Next.js dev 模式熱重載時開出孤兒 WS 連線。
+- `lib/binanceFeed.ts` opens one Binance WebSocket per coin, combining the `<symbol>@trade` and
+  `<symbol>@kline_1m` streams. For every trade it stores `isBuy` (`!isBuyerMaker`, meaning the
+  buyer was the aggressor). It also polls the REST spot order book as a fallback. Like the
+  Python version, it reconnects in place 5 seconds after a disconnect.
+- `lib/indicators.ts` ports `obi/walls/cvd/rsi/macd/vwap/emas/heikinAshi/volProfile/biasScore/scoreTrend`
+  function by function, with the same constants as the Python config. The collector stores only
+  one folded `momentum_bias` score. This port instead **returns every indicator separately**
+  (`computeBreakdown()`), and MomentumPanel shows each one. It also exposes raw aggressive
+  buy/sell USD volume and trade counts (`activeBuySell5m`) rather than only the sign of the CVD.
+- `lib/marketState.ts` is an in-process singleton. It holds the runtime state for every coin and
+  samples bias history every 5 seconds for the sparklines. `server.ts` calls `start()` once
+  after `app.prepare()` finishes. `/api/momentum` also calls it as a safeguard, and a `started`
+  flag prevents duplicate connections. The singleton is attached to `globalThis` so that Next.js
+  dev-mode hot reloads don't leave orphaned WebSocket connections behind.
 
-### 即時推播：`/ws/momentum`（取代原本 polling）
+### Real-time push: `/ws/momentum`
 
-2026-09-05 之前 `MomentumPanel.tsx` 是每 4 秒 `fetch("/api/momentum")` 拉一次；現在
-`server.ts` 開了一條 WebSocket（path `/ws/momentum`），每 1 秒把 `marketState.getAll()`
-的最新快照 broadcast 給所有連線的瀏覽器，前端一開頁面就連線、被動接收 push，不用自己
-排程重複請求。連線一建立會先收到一筆當下快照（不用等下一輪 broadcast），斷線 3 秒後
-前端自動重連。`/api/momentum` 這條 REST route 還留著給手動除錯用（`curl` 一下看資料
-長什麼樣），面板本身已經不呼叫它。
+`server.ts` runs a WebSocket server on the path `/ws/momentum`. Every second it broadcasts the
+latest `marketState.getAll()` snapshot to all connected browsers. The frontend connects when the
+page opens and receives updates passively, with no polling of its own. Each new connection gets
+the current snapshot right away instead of waiting for the next broadcast. After a disconnect,
+the frontend reconnects automatically 3 seconds later.
 
-熱圖／coin detail 頁的 Postgres 資料（本來就有 collector 端最長 60 分鐘的批次寫入延遲，
-見上面「已知落差」）維持原本的 REST polling，沒有改成 WS——即時推播對一個本來就有
-分鐘級延遲的資料源沒有意義，這次只換了真正即時（幣安 WS 秒級更新）的動量面板。
+The `/api/momentum` REST route remains for manual debugging (`curl` it to inspect the payload).
+The panel itself no longer calls it.
 
-**幣種覆蓋**：`libs/config.py` 的 `BINANCE_SYMBOL` 只放 BTC（該分支只交易 BTC，
-沒理由訂閱別的）。這裡為了多幣種比較，比照命名慣例補了 `tests/perpl/perpl_common.py`
-`COINS` 其餘 5 幣種——**實測 HYPEUSDT、MONUSDT 在 Binance 現貨回 `Invalid symbol.`**
-（HYPE/MON 目前沒有 Binance 現貨對應盤可比對），BTC/ETH/SOL/ZEC 這 4 個正常運作。
-面板上 HYPE/MON 會顯示「無資料」而不是讓整個 process 掛掉或誤植假資料。
+The heatmap and coin-detail pages still use REST polling for Postgres data. The collector writes
+in batches, so that data can arrive up to 60 minutes late, and pushing it over WebSocket would
+gain nothing. Only the momentum panel moved to push, because its Binance source updates every
+second.
 
-### Orderbook Ladder：`/ws/orderbook`（Perpl BTC 訂單簿即時疊圖）
+**Coin coverage**: the collector itself only subscribes to BTC on Binance. For the multi-coin
+comparison, this app also subscribes to the other five Perpl markets using the same naming
+convention. **In testing, Binance spot returns `Invalid symbol.` for HYPEUSDT and MONUSDT**
+because HYPE and MON have no Binance spot market to compare against. BTC, ETH, SOL and ZEC all
+work. The panel shows HYPE and MON as "no data" instead of crashing the process or showing
+made-up numbers.
 
-`components/Heatmap.tsx` 疊上 Perpl BTC 訂單簿前 20 檔的階梯狀線段（orderbook
-ladder），經典 depth chart 造型：X 軸＝價格，bid 固定用左半畫布（最佳價位在
-`centerX`、第 20 檔剛好落在 `x-min`）、ask 固定用右半畫布（最佳價位在
-`centerX`、第 20 檔剛好落在 `x-max`）；Y 軸＝累計深度，基準線（累計量 0，
-最佳價位）在畫布底部（`y-max`），往上長到頂（`y-min`）——中間低、兩側高。
-兩邊各自用自己的價差跟總量正規化到滿版寬高，不共用同一把尺，確保深度小的
-那一側也不會縮在角落看不清楚。
+### Orderbook ladder: `/ws/orderbook` (live Perpl BTC order book overlay)
 
-**2026-09-05 查證：這個不能像原本想的那樣在瀏覽器端直接訂閱**——實測 Perpl 的
-market-data WS（`wss://app.perpl.xyz/ws/v1/market-data`）會依 `Origin` header
-擋非 `app.perpl.xyz` 的連線（帶假 Origin 連線直接收到 403；不帶或帶
-`app.perpl.xyz` 自己的 Origin 才連得上）。瀏覽器發出的 WS 連線一定會帶頁面真實
-的 Origin，且無法被頁面 JS 偽造或省略，所以只能跟幣安那條路一樣：由
-`lib/perplOrderbook.ts`（這支後端，Node.js 的 WS client 預設不送 Origin header）
-訂閱，`server.ts` 開 `/ws/orderbook` 每 500ms 轉播給前端。目前只做 BTC（Perpl
-`market_id=1`、`price_decimals=1`、`size_decimals=5`，查
-`GET /v1/pub/context` 得到後寫死，這個市場設定幾乎不會變）。
+`components/Heatmap.tsx` overlays a step-line ladder of the top 20 levels of the Perpl BTC order
+book, drawn as a classic depth chart:
 
-實作上 ladder 畫在**獨立的透明疊圖 canvas**（`ladderCanvasRef`），蓋在熱圖本體
-上面，不管底下是 WebGPU（`renderGpu`，現代瀏覽器的主路徑）還是 canvas2D 備援
-在畫都蓋得到——WebGPU 沒有現成的 2D `strokeStyle`/`lineTo`/`fill` API，硬要在
-render pipeline 裡另外做線段幾何既複雜又難在沒有瀏覽器的環境驗證對不對，疊一張
-透明 canvas2D 上去是業界常見、風險低很多的做法。副作用是 ladder 的重繪（跟著
-`/ws/orderbook` 的 500ms 推播）完全獨立於熱圖本體那份較重的重新計算，兩者互不
-拖累。
+- **X axis = price.** Bids take the left half of the canvas, with the best bid at `centerX` and
+  the 20th level at `x-min`. Asks take the right half, with the best ask at `centerX` and the
+  20th level at `x-max`.
+- **Y axis = cumulative depth.** The baseline (zero cumulative size, best price) is at the
+  bottom (`y-max`), and depth grows toward the top (`y-min`). The chart is low in the middle and
+  high at the sides.
+- Each side is scaled to full width and height by its own price range and total size. The two
+  sides don't share a scale, so a thinner side never shrinks into a corner.
 
-## 頁面
+**The browser can't subscribe directly.** Perpl's market-data WebSocket
+(`wss://app.perpl.xyz/ws/v1/market-data`) checks the `Origin` header and rejects connections
+from origins other than `app.perpl.xyz`. A connection with a foreign Origin gets a 403; it works
+only with no Origin or with `app.perpl.xyz`'s own. A browser always sends the page's real Origin
+on WebSocket connections, and page JavaScript can't change or omit it. So this follows the same
+pattern as the Binance feed:
 
-- `/` — Dashboard：可切換幣種/時間窗的 Perpl 熱圖（讀 DB）+ 全幣種動量比較面板（即時 Binance WS，不讀 DB）
-- `/coin/[symbol]` — 單一幣種深度分析：更大的熱圖、collector 算好的 bias/basis 走勢、最近 20 筆明細表（讀 DB）
+- `lib/perplOrderbook.ts` subscribes on the backend. Node.js WebSocket clients don't send an
+  Origin header by default.
+- `server.ts` relays the book to the frontend over `/ws/orderbook` every 500 ms.
+
+Only BTC is supported for now. The market settings (`market_id=1`, `price_decimals=1`,
+`size_decimals=5`) come from `GET /v1/pub/context` and are hardcoded, since they rarely change.
+
+The ladder is drawn on a **separate transparent overlay canvas** (`ladderCanvasRef`) on top of
+the heatmap. This way it shows up whether the heatmap is rendered with WebGPU (`renderGpu`, the
+main path in modern browsers) or the canvas2D fallback. WebGPU has no built-in 2D
+`strokeStyle`/`lineTo`/`fill` API. Building line geometry inside the render pipeline would be
+complex and hard to verify without a browser, while a transparent canvas2D overlay is a common,
+much lower-risk approach. It also means ladder redraws, which follow the 500 ms `/ws/orderbook`
+push, never wait on the heavier heatmap recomputation, and vice versa.
+
+## Pages
+
+- `/`: dashboard with the Perpl heatmap, switchable by coin and time window (from the DB), plus
+  the all-coin momentum comparison panel (live Binance WebSocket, no DB).
+- `/coin/[symbol]`: per-coin depth analysis with a larger heatmap, the collector's bias/basis
+  trends and a table of the latest 20 rows (from the DB).
 
 ## API
 
-- `GET /api/ticks?coin=BTC&minutes=30&limit=20000` — Perpl orderbook 逐筆快照（讀 DB，舊→新）
-- `GET /api/coins?minutes=60` — 各幣種最新 Perpl 快照 + 過去 N 分鐘筆數（讀 DB）
-- `GET /api/price-ref?coin=BTC&hoursAgo=24` — 最接近某個時間點之前的參考價（算漲跌幅用）
-- `GET /api/momentum` — 全幣種即時指標拆解（讀 process 內存，不查 DB；手動除錯用，
-  MomentumPanel.tsx 本身走 `/ws/momentum` 不呼叫這條）
-- `WS /ws/momentum` — 每秒 broadcast 全幣種即時指標拆解，MomentumPanel.tsx 的真正資料來源
-- `WS /ws/orderbook` — 每 500ms broadcast Perpl BTC 訂單簿前 20 檔 bid/ask，Heatmap.tsx
-  的 orderbook ladder 疊圖用
+- `GET /api/ticks?coin=BTC&minutes=30&limit=20000`: Perpl orderbook snapshots, oldest to newest
+  (from the DB).
+- `GET /api/coins?minutes=60`: latest Perpl snapshot per coin and the row count over the past N
+  minutes (from the DB).
+- `GET /api/price-ref?coin=BTC&hoursAgo=24`: the reference price closest to (and before) a point
+  in time, used for percentage change.
+- `GET /api/momentum`: live per-indicator breakdown for all coins, read from process memory with
+  no DB query. Meant for manual debugging; `MomentumPanel.tsx` uses `/ws/momentum` instead.
+- `WS /ws/momentum`: broadcasts the per-indicator breakdown for all coins every second. This is
+  the actual data source for `MomentumPanel.tsx`.
+- `WS /ws/orderbook`: broadcasts the top 20 bid/ask levels of the Perpl BTC order book every
+  500 ms. `Heatmap.tsx` uses it for the orderbook ladder overlay.
