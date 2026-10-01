@@ -1,0 +1,169 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    .dc-root {
+      --bg: #0a0d12;
+      --panel: #12161d;
+      --panel2: #151a22;
+      --border: #1f2733;
+      --bull: #3ddc84;
+      --bear: #ff5470;
+      --muted: #7b8794;
+      --text: #e6e9ef;
+      --accent: #3ec6ff;
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse 900px 420px at 50% -8%, rgba(62,198,255,0.10), transparent 60%),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 28px),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 28px),
+        var(--bg);
+      min-height: 100%;
+      padding: 30px 34px;
+    }
+    .kicker { font-size: 11px; letter-spacing: 0.14em; color: var(--accent); text-transform: uppercase; margin-bottom: 4px; }
+    h1 { font-size: 18px; font-weight: 800; margin: 0 0 4px; }
+    .desc { font-size: 12px; color: var(--muted); max-width: 760px; line-height: 1.6; margin: 0 0 26px; }
+    .desc b { color: var(--text); }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+
+    .card { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--border); border-radius: 6px; padding: 22px; position: relative; }
+    .hud-corner { position: absolute; width: 12px; height: 12px; border: 1.5px solid var(--accent); opacity: 0.65; }
+    .hud-corner.tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+    .hud-corner.tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+    .hud-corner.bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+    .hud-corner.br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+    .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .card-coin b { font-size: 20px; font-weight: 800; letter-spacing: 0.02em; }
+    .card-coin span { font-size: 11px; color: var(--muted); margin-left: 8px; }
+    .status-pill { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; padding: 4px 10px; border-radius: 3px; }
+    .status-pill.live { background: rgba(61,220,132,0.15); color: var(--bull); }
+
+    .bias-row { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 18px; }
+    .bias-score { font-size: 44px; font-weight: 800; line-height: 1; color: var(--bull); text-shadow: 0 0 20px rgba(61,220,132,0.4); }
+    .bias-label { font-size: 13px; font-weight: 700; color: var(--bull); margin-left: 10px; vertical-align: 6px; }
+    .bias-meta { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+    .vol-label { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 7px; }
+    .vol-bar { height: 12px; border-radius: 6px; overflow: hidden; display: flex; background: #171d26; border: 1px solid var(--border); }
+    .vol-buy { background: linear-gradient(90deg, #2bb56d, var(--bull)); }
+    .vol-sell { background: linear-gradient(90deg, var(--bear), #d63f5c); }
+    .vol-meta { display: flex; justify-content: space-between; font-size: 11px; margin-top: 6px; }
+    .vol-meta .caption { font-size: 10px; color: #545f6e; margin-top: 3px; }
+
+    .ind { margin-top: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .ind-item { border-bottom: 1px solid rgba(31,39,51,0.6); padding-bottom: 10px; }
+    .ind-item .head { display: flex; justify-content: space-between; align-items: baseline; }
+    .ind-item .k { font-size: 12px; font-weight: 600; }
+    .ind-item .v { font-size: 13px; font-weight: 700; }
+    .v.pos { color: var(--bull); } .v.neg { color: var(--bear); }
+    .ind-item .cap { font-size: 10px; color: #545f6e; margin-top: 3px; }
+
+    .gauge-track { position: relative; height: 6px; background: #171d26; border-radius: 3px; margin-top: 8px; border: 1px solid var(--border); }
+    .gauge-fill { position: absolute; top: -1px; bottom: -1px; border-radius: 3px; }
+    .gauge-mark { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--text); border-radius: 1px; }
+
+    .na-card { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 420px; gap: 10px; color: var(--muted); text-align: center; }
+    .na-card .big { font-size: 15px; font-weight: 600; color: var(--text); }
+    .na-card .code { font-size: 11px; color: #545f6e; }
+    .status-pill.na { background: rgba(123,135,148,0.15); color: var(--muted); }
+  </style>
+</helmet>
+
+<div class="dc-root">
+  <div class="kicker">Momentum Panel — Indicator Reference</div>
+  <h1>指標拆解特寫</h1>
+  <p class="desc">MomentumPanel 不再讀 BookSnapshot 折算好的單一 <b>momentum_bias</b>，改成 <b>lib/binanceFeed.ts</b> 即時監聽每個幣種的
+    Binance <b>&lt;symbol&gt;@trade</b> WS 主動買賣 + K 線，由 <b>lib/indicators.ts</b>（libs/feeds.py + libs/indicators.py 的 TS 移植）
+    逐一算出並分開顯示，不只是折算後的單一分數。</p>
+
+  <div class="row2">
+
+    <!-- Full breakdown, real captured BTC values -->
+    <div class="card">
+      <span class="hud-corner tl"></span><span class="hud-corner tr"></span><span class="hud-corner bl"></span><span class="hud-corner br"></span>
+      <div class="card-head">
+        <div class="card-coin"><b>BTC</b><span>BTCUSDT</span></div>
+        <span class="status-pill live">即時</span>
+      </div>
+
+      <div class="bias-row">
+        <div>
+          <span class="bias-score">+57.8</span><span class="bias-label">BULLISH</span>
+          <div class="bias-meta">投票制 trend：+5 (BULLISH) — biasScore 是加權強度，trend 是幾個指標一致同向的計票，兩把不同的尺互相佐證</div>
+        </div>
+      </div>
+
+      <div class="vol-label">主動買賣 5m（幣安現貨 &lt;symbol&gt;@trade WS，!isBuyerMaker=主動買方）</div>
+      <div class="vol-bar"><div class="vol-buy" style="width:86.4%"></div><div class="vol-sell" style="width:13.6%"></div></div>
+      <div class="vol-meta"><span style="color:var(--bull)">買 $61,676.73（60 筆）</span><span style="color:var(--bear)">賣 $9,689.72（40 筆）</span></div>
+      <div class="vol-meta"><span class="caption">拆開的原始美金量與筆數，不只是折算成 CVD 的正負號</span></div>
+
+      <div class="ind">
+        <div class="ind-item">
+          <div class="head"><span class="k">EMA(5/20) 交叉</span><span class="v pos">多頭排列</span></div>
+          <div class="cap">fast 80,875.27 &gt; slow 80,807.18 — 短均線在長均線之上</div>
+        </div>
+        <div class="ind-item">
+          <div class="head"><span class="k">OBI 掛單失衡</span><span class="v pos">0.204</span></div>
+          <div class="gauge-track"><div class="gauge-fill" style="left:50%; width:20.4%; background:var(--bull)"></div><div class="gauge-mark" style="left:50%"></div></div>
+          <div class="cap">-1（賣壓極端）～ +1（買壓極端），mid 上下 0.5% 帶內掛單量差</div>
+        </div>
+        <div class="ind-item">
+          <div class="head"><span class="k">MACD Histogram</span><span class="v pos">13.67</span></div>
+          <div class="cap">macd 44.17 · signal 30.50 — histogram &gt; 0 動能轉強</div>
+        </div>
+        <div class="ind-item">
+          <div class="head"><span class="k">RSI(14)</span><span class="v neg">70.1</span></div>
+          <div class="gauge-track"><div class="gauge-fill" style="left:0%; width:30%; background:rgba(61,220,132,.35)"></div><div class="gauge-fill" style="left:70%; width:30%; background:rgba(255,84,112,.35)"></div><div class="gauge-mark" style="left:70.1%"></div></div>
+          <div class="cap">&le;30 超賣 · &ge;70 超買 — 已進超買區</div>
+        </div>
+        <div class="ind-item">
+          <div class="head"><span class="k">VWAP / POC 位置</span><span class="v pos">高於兩者</span></div>
+          <div class="cap">vwap 80,854.66 · poc 80,729.69 — mid 站上均價與成交量密集區</div>
+        </div>
+        <div class="ind-item">
+          <div class="head"><span class="k">掛單牆 Walls</span><span class="v">bid 1 / ask 1</span></div>
+          <div class="cap">掛單量 &ge; 平均 3 倍視為一道牆</div>
+        </div>
+        <div class="ind-item" style="border-bottom:none;">
+          <div class="head"><span class="k">Heikin-Ashi 連續</span><span class="v pos">+3</span></div>
+          <div class="cap">最近 3 根 1m K 棒連續收綠</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Degraded / unavailable state -->
+    <div class="card">
+      <span class="hud-corner tl"></span><span class="hud-corner tr"></span><span class="hud-corner bl"></span><span class="hud-corner br"></span>
+      <div class="card-head">
+        <div class="card-coin"><b>HYPE</b><span>HYPEUSDT</span></div>
+        <span class="status-pill na">無資料</span>
+      </div>
+      <div class="na-card">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#3a4453" stroke-width="1.6"/><path d="M8 8l8 8M16 8l-8 8" stroke="#3a4453" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <div class="big">Binance 現貨無此代號</div>
+        <div class="code">bootError: "Invalid symbol."</div>
+        <p style="max-width:320px; font-size:11px; line-height:1.7; color:var(--muted);">
+          實測 HYPEUSDT / MONUSDT 在幣安現貨不存在。WS 訂閱不會讓整個 process 掛掉，
+          該幣種單獨降級顯示，不影響其他幣種收集。
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

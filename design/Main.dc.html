@@ -1,0 +1,389 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+
+    .dc-root {
+      --bg: #0a0d12;
+      --panel: #12161d;
+      --panel2: #151a22;
+      --border: #1f2733;
+      --bull: #0bcff2;
+      --bear: #ad50fa;
+      --muted: #7b8794;
+      --text: #e6e9ef;
+      --accent: #3ec6ff;
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse 900px 420px at 50% -8%, rgba(62,198,255,0.10), transparent 60%),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 28px),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 28px),
+        var(--bg);
+      min-height: 100%;
+      padding: 28px 32px 64px;
+    }
+    .wrap { max-width: 1280px; margin: 0 auto; }
+
+    /* ---- header ---- */
+    .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark { filter: drop-shadow(0 0 6px rgba(62,198,255,0.55)); }
+    .brand-name { font-size: 20px; font-weight: 800; letter-spacing: 0.06em; color: var(--text); }
+    .brand-sub { font-size: 11px; color: var(--muted); letter-spacing: 0.14em; margin-top: 2px; }
+    .live-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      border: 1px solid rgba(61,220,132,0.4); background: rgba(61,220,132,0.08);
+      color: var(--bull); font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+      padding: 5px 10px 5px 8px; border-radius: 3px;
+    }
+    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bull); box-shadow: 0 0 8px 1px rgba(61,220,132,0.8); }
+    .note { font-size: 12px; color: var(--muted); margin: 4px 0 0; max-width: 720px; line-height: 1.6; }
+    .note b { color: var(--text); font-weight: 600; }
+
+    .conn-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 26px; }
+    .conn-chip {
+      display: flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 0.04em;
+      border: 1px solid var(--border); background: var(--panel); border-radius: 3px; padding: 6px 10px;
+      color: var(--muted);
+    }
+    .conn-chip b { color: var(--text); font-weight: 600; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+    .dot.on { background: var(--bull); box-shadow: 0 0 6px 1px rgba(61,220,132,0.7); }
+    .dot.off { background: #3a4453; }
+
+    /* ---- section shell ---- */
+    .section-title { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px 2px; }
+    .section-title h2 { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin: 0; }
+    .section-title .rule { flex: 1; height: 1px; background: linear-gradient(90deg, var(--border), transparent); }
+    section { margin-bottom: 30px; }
+
+    .panel {
+      position: relative;
+      background: linear-gradient(180deg, var(--panel2), var(--panel));
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 16px;
+    }
+    .hud-corner { position: absolute; width: 10px; height: 10px; border: 1.5px solid var(--accent); opacity: 0.65; }
+    .hud-corner.tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+    .hud-corner.tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+    .hud-corner.bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+    .hud-corner.br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+    /* ---- heatmap toolbar ---- */
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .toolbar-left { display: flex; align-items: center; gap: 10px; }
+    .select {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 3px;
+      color: var(--text); font: inherit; font-size: 12px; font-weight: 600; padding: 6px 26px 6px 10px;
+      letter-spacing: 0.03em;
+      appearance: none;
+      background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-position: calc(100% - 14px) 13px, calc(100% - 9px) 13px;
+      background-size: 5px 5px, 5px 5px;
+      background-repeat: no-repeat;
+    }
+    .tick-count { font-size: 11px; color: var(--muted); }
+    .range-group { display: flex; gap: 4px; }
+    .range-btn {
+      font-size: 11px; font-weight: 600; padding: 6px 10px; border-radius: 3px;
+      border: 1px solid var(--border); color: var(--muted); background: transparent; letter-spacing: 0.03em;
+    }
+    .range-btn.active { border-color: var(--bull); color: var(--bull); background: rgba(61,220,132,0.12); }
+
+    .heatmap-frame { position: relative; height: 380px; border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
+    .heatmap-canvas {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(130px 60px at 6% 62%, rgba(61,220,132,.38), transparent 70%),
+        radial-gradient(170px 85px at 20% 38%, rgba(61,220,132,.30), transparent 70%),
+        radial-gradient(100px 55px at 33% 72%, rgba(255,84,112,.32), transparent 70%),
+        radial-gradient(150px 78px at 47% 33%, rgba(61,220,132,.34), transparent 70%),
+        radial-gradient(115px 58px at 60% 68%, rgba(255,84,112,.36), transparent 70%),
+        radial-gradient(160px 80px at 74% 42%, rgba(61,220,132,.28), transparent 70%),
+        radial-gradient(120px 62px at 87% 60%, rgba(255,84,112,.32), transparent 70%),
+        radial-gradient(140px 70px at 97% 46%, rgba(61,220,132,.30), transparent 70%),
+        linear-gradient(#0a0d12,#0a0d12);
+    }
+    .heatmap-scan {
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 4px);
+      mix-blend-mode: overlay;
+    }
+    .heatmap-mid { position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed rgba(230,233,239,0.4); }
+    .heatmap-mid-label {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      font-size: 10px; color: var(--text); background: rgba(10,13,18,0.7); padding: 2px 6px; border-radius: 2px;
+      border: 1px solid var(--border);
+    }
+    .hm-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 8px; }
+    .hm-legend { display: flex; gap: 14px; align-items: center; }
+    .legend-sw { display: inline-flex; align-items: center; gap: 5px; }
+    .legend-box { width: 9px; height: 9px; border-radius: 2px; }
+
+    /* ---- momentum grid ---- */
+    .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+
+    .card { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--border); border-radius: 4px; padding: 14px; position: relative; }
+    .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .card-coin { display: flex; align-items: baseline; gap: 6px; }
+    .card-coin b { font-size: 14px; font-weight: 700; letter-spacing: 0.02em; }
+    .card-coin span { font-size: 10px; color: var(--muted); }
+    .status-pill { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 3px; }
+    .status-pill.live { background: rgba(61,220,132,0.15); color: var(--bull); }
+    .status-pill.na { background: rgba(123,135,148,0.15); color: var(--muted); }
+
+    .bias-row { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 12px; gap: 10px; }
+    .bias-score { font-size: 28px; font-weight: 800; line-height: 1; }
+    .bias-score.pos { color: var(--bull); text-shadow: 0 0 14px rgba(61,220,132,0.35); }
+    .bias-score.neg { color: var(--bear); text-shadow: 0 0 14px rgba(255,84,112,0.35); }
+    .bias-meta { font-size: 10px; color: var(--muted); margin-top: 4px; }
+    .bias-label { font-size: 11px; font-weight: 700; margin-left: 6px; }
+
+    .vol-label { font-size: 10px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+    .vol-bar { height: 8px; border-radius: 4px; overflow: hidden; display: flex; background: #171d26; border: 1px solid var(--border); }
+    .vol-buy { background: linear-gradient(90deg, #2bb56d, var(--bull)); box-shadow: 0 0 8px rgba(61,220,132,0.5) inset; }
+    .vol-sell { background: linear-gradient(90deg, var(--bear), #d63f5c); box-shadow: 0 0 8px rgba(255,84,112,0.5) inset; }
+    .vol-meta { display: flex; justify-content: space-between; font-size: 10px; margin-top: 5px; }
+
+    .ind-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; margin-top: 12px; }
+    .ind-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(31,39,51,0.6); font-size: 11px; }
+    .ind-row .k { color: var(--muted); }
+    .ind-row .v { font-weight: 600; }
+    .v.pos { color: var(--bull); } .v.neg { color: var(--bear); } .v.flat { color: var(--muted); }
+
+    .na-body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 230px; color: var(--muted); font-size: 11px; text-align: center; gap: 6px; }
+    .na-body .code { font-size: 10px; color: #545f6e; font-family: inherit; }
+  </style>
+</helmet>
+
+<div class="dc-root">
+  <div class="wrap">
+
+    <div class="header">
+      <div>
+        <div class="brand">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" class="brand-mark">
+            <path d="M2 15h5l2.5-8 4 16 3-11 2 6h7.5" stroke="#3ec6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div>
+            <div class="brand-name">CRYPTOPULSE</div>
+            <div class="brand-sub">PERPETUAL MARKET MONITOR</div>
+          </div>
+        </div>
+        <p class="note">Perpl 永續合約市場微觀結構即時監控 — orderbook 買賣壓熱圖 + 多幣種動量比較<br>
+          <b>ⓘ</b> 熱圖資料來源每小時批次寫入一次，最新資料正常會落後 0~60 分鐘（非網站延遲）。動量面板為即時 Binance WS，不受此限制。</p>
+      </div>
+      <span class="live-pill"><span class="live-dot"></span>MARKET LIVE</span>
+    </div>
+
+    <div class="conn-strip">
+      <span class="conn-chip"><span class="dot on"></span><b>BTC</b>&nbsp;connected</span>
+      <span class="conn-chip"><span class="dot on"></span><b>ETH</b>&nbsp;connected</span>
+      <span class="conn-chip"><span class="dot on"></span><b>SOL</b>&nbsp;connected</span>
+      <span class="conn-chip"><span class="dot on"></span><b>ZEC</b>&nbsp;connected</span>
+      <span class="conn-chip"><span class="dot off"></span><b>HYPE</b>&nbsp;no Binance spot</span>
+      <span class="conn-chip"><span class="dot off"></span><b>MON</b>&nbsp;no Binance spot</span>
+    </div>
+
+    <section>
+      <div class="section-title"><h2>Orderbook 買賣壓熱圖（Perpl）</h2><span class="rule"></span></div>
+      <div class="panel">
+        <span class="hud-corner tl"></span><span class="hud-corner tr"></span><span class="hud-corner bl"></span><span class="hud-corner br"></span>
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <select class="select"><option>BTC</option></select>
+            <span class="tick-count">7,842 筆</span>
+          </div>
+          <div class="range-group">
+            <span class="range-btn">30 分鐘</span>
+            <span class="range-btn active">2 小時</span>
+            <span class="range-btn">12 小時</span>
+            <span class="range-btn">24 小時</span>
+          </div>
+        </div>
+        <div class="hm-legend" style="margin-bottom:8px;">
+          <span class="legend-sw"><span class="legend-box" style="background:var(--bull)"></span><span style="font-size:11px;color:var(--muted)">+42.0 bps</span></span>
+          <span class="legend-sw"><span class="legend-box" style="background:var(--bull)"></span><span style="font-size:11px;color:var(--bull)">買壓</span></span>
+          <span class="legend-sw"><span class="legend-box" style="background:var(--bear)"></span><span style="font-size:11px;color:var(--bear)">賣壓</span></span>
+          <span class="legend-sw" style="margin-left:auto"><span style="font-size:11px;color:var(--muted)">-42.0 bps</span></span>
+        </div>
+        <div class="heatmap-frame">
+          <div class="heatmap-canvas"></div>
+          <div class="heatmap-scan"></div>
+          <div class="heatmap-mid"></div>
+          <div class="heatmap-mid-label">mid · $80,861.40</div>
+        </div>
+        <div class="hm-axis"><span>21:42:07</span><span>中價 (mid) 虛線</span><span>23:42:07</span></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-title"><h2>動量比較（即時監聽幣安主動買賣）</h2><span class="rule"></span></div>
+      <div class="grid2">
+
+        <!-- BTC — bullish, full data -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-coin"><b>BTC</b><span>BTCUSDT</span></div>
+            <span class="status-pill live">即時</span>
+          </div>
+          <div class="bias-row">
+            <div>
+              <div class="bias-score pos">+57.8<span class="bias-label" style="color:var(--bull)">BULLISH</span></div>
+              <div class="bias-meta">投票制 trend：+5 (BULLISH)</div>
+            </div>
+            <svg width="140" height="40" viewBox="0 0 140 40">
+              <defs><filter id="glowB1"><feGaussianBlur stdDeviation="1.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+              <polyline points="0,30 20,26 40,28 60,20 80,22 100,12 120,10 140,4" fill="none" stroke="#3ddc84" stroke-width="1.6" filter="url(#glowB1)"/>
+            </svg>
+          </div>
+          <div class="vol-label">主動買賣 5m（幣安現貨）</div>
+          <div class="vol-bar"><div class="vol-buy" style="width:86%"></div><div class="vol-sell" style="width:14%"></div></div>
+          <div class="vol-meta"><span style="color:var(--bull)">買 $61.7K（60筆）</span><span style="color:var(--bear)">賣 $9.7K（40筆）</span></div>
+          <div class="ind-grid">
+            <div class="ind-row"><span class="k">EMA(5/20)</span><span class="v pos">多頭排列</span></div>
+            <div class="ind-row"><span class="k">OBI</span><span class="v pos">0.204</span></div>
+            <div class="ind-row"><span class="k">MACD Hist</span><span class="v pos">13.67</span></div>
+            <div class="ind-row"><span class="k">RSI(14)</span><span class="v neg">70.1</span></div>
+            <div class="ind-row"><span class="k">vs VWAP</span><span class="v pos">高於</span></div>
+            <div class="ind-row"><span class="k">vs POC</span><span class="v pos">高於</span></div>
+            <div class="ind-row"><span class="k">掛單牆 bid/ask</span><span class="v flat">1 / 1</span></div>
+            <div class="ind-row"><span class="k">Heikin-Ashi 連續</span><span class="v pos">3</span></div>
+          </div>
+        </div>
+
+        <!-- ETH — bullish but neutral vote, shows the "two rulers" disagree case -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-coin"><b>ETH</b><span>ETHUSDT</span></div>
+            <span class="status-pill live">即時</span>
+          </div>
+          <div class="bias-row">
+            <div>
+              <div class="bias-score pos">+35.7<span class="bias-label" style="color:var(--bull)">BULLISH</span></div>
+              <div class="bias-meta">投票制 trend：+2 (NEUTRAL)</div>
+            </div>
+            <svg width="140" height="40" viewBox="0 0 140 40">
+              <defs><filter id="glowB2"><feGaussianBlur stdDeviation="1.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+              <polyline points="0,10 20,14 40,12 60,20 80,18 100,24 120,22 140,26" fill="none" stroke="#3ddc84" stroke-width="1.6" filter="url(#glowB2)"/>
+            </svg>
+          </div>
+          <div class="vol-label">主動買賣 5m（幣安現貨）</div>
+          <div class="vol-bar"><div class="vol-buy" style="width:97%"></div><div class="vol-sell" style="width:3%"></div></div>
+          <div class="vol-meta"><span style="color:var(--bull)">買 $183.8K（96筆）</span><span style="color:var(--bear)">賣 $5.6K（51筆）</span></div>
+          <div class="ind-grid">
+            <div class="ind-row"><span class="k">EMA(5/20)</span><span class="v pos">多頭排列</span></div>
+            <div class="ind-row"><span class="k">OBI</span><span class="v neg">-0.282</span></div>
+            <div class="ind-row"><span class="k">MACD Hist</span><span class="v pos">0.12</span></div>
+            <div class="ind-row"><span class="k">RSI(14)</span><span class="v flat">66.8</span></div>
+            <div class="ind-row"><span class="k">vs VWAP</span><span class="v pos">高於</span></div>
+            <div class="ind-row"><span class="k">vs POC</span><span class="v pos">高於</span></div>
+            <div class="ind-row"><span class="k">掛單牆 bid/ask</span><span class="v neg">1 / 3</span></div>
+            <div class="ind-row"><span class="k">Heikin-Ashi 連續</span><span class="v pos">1</span></div>
+          </div>
+        </div>
+
+        <!-- SOL — bearish example -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-coin"><b>SOL</b><span>SOLUSDT</span></div>
+            <span class="status-pill live">即時</span>
+          </div>
+          <div class="bias-row">
+            <div>
+              <div class="bias-score neg">-24.3<span class="bias-label" style="color:var(--bear)">BEARISH</span></div>
+              <div class="bias-meta">投票制 trend：-3 (BEARISH)</div>
+            </div>
+            <svg width="140" height="40" viewBox="0 0 140 40">
+              <defs><filter id="glowB3"><feGaussianBlur stdDeviation="1.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+              <polyline points="0,6 20,10 40,8 60,16 80,20 100,26 120,30 140,34" fill="none" stroke="#ff5470" stroke-width="1.6" filter="url(#glowB3)"/>
+            </svg>
+          </div>
+          <div class="vol-label">主動買賣 5m（幣安現貨）</div>
+          <div class="vol-bar"><div class="vol-buy" style="width:38%"></div><div class="vol-sell" style="width:62%"></div></div>
+          <div class="vol-meta"><span style="color:var(--bull)">買 $14.2K（33筆）</span><span style="color:var(--bear)">賣 $23.1K（58筆）</span></div>
+          <div class="ind-grid">
+            <div class="ind-row"><span class="k">EMA(5/20)</span><span class="v neg">空頭排列</span></div>
+            <div class="ind-row"><span class="k">OBI</span><span class="v neg">-0.331</span></div>
+            <div class="ind-row"><span class="k">MACD Hist</span><span class="v neg">-0.08</span></div>
+            <div class="ind-row"><span class="k">RSI(14)</span><span class="v flat">38.4</span></div>
+            <div class="ind-row"><span class="k">vs VWAP</span><span class="v neg">低於</span></div>
+            <div class="ind-row"><span class="k">vs POC</span><span class="v neg">低於</span></div>
+            <div class="ind-row"><span class="k">掛單牆 bid/ask</span><span class="v neg">0 / 2</span></div>
+            <div class="ind-row"><span class="k">Heikin-Ashi 連續</span><span class="v neg">-2</span></div>
+          </div>
+        </div>
+
+        <!-- ZEC — mild neutral example -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-coin"><b>ZEC</b><span>ZECUSDT</span></div>
+            <span class="status-pill live">即時</span>
+          </div>
+          <div class="bias-row">
+            <div>
+              <div class="bias-score pos">+6.4<span class="bias-label" style="color:var(--bull)">NEUTRAL</span></div>
+              <div class="bias-meta">投票制 trend：0 (NEUTRAL)</div>
+            </div>
+            <svg width="140" height="40" viewBox="0 0 140 40">
+              <defs><filter id="glowB4"><feGaussianBlur stdDeviation="1.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+              <polyline points="0,20 20,18 40,22 60,19 80,21 100,17 120,20 140,18" fill="none" stroke="#3ddc84" stroke-width="1.6" filter="url(#glowB4)"/>
+            </svg>
+          </div>
+          <div class="vol-label">主動買賣 5m（幣安現貨）</div>
+          <div class="vol-bar"><div class="vol-buy" style="width:54%"></div><div class="vol-sell" style="width:46%"></div></div>
+          <div class="vol-meta"><span style="color:var(--bull)">買 $5.1K（19筆）</span><span style="color:var(--bear)">賣 $4.3K（17筆）</span></div>
+          <div class="ind-grid">
+            <div class="ind-row"><span class="k">EMA(5/20)</span><span class="v pos">多頭排列</span></div>
+            <div class="ind-row"><span class="k">OBI</span><span class="v flat">0.041</span></div>
+            <div class="ind-row"><span class="k">MACD Hist</span><span class="v flat">0.01</span></div>
+            <div class="ind-row"><span class="k">RSI(14)</span><span class="v flat">51.2</span></div>
+            <div class="ind-row"><span class="k">vs VWAP</span><span class="v pos">高於</span></div>
+            <div class="ind-row"><span class="k">vs POC</span><span class="v neg">低於</span></div>
+            <div class="ind-row"><span class="k">掛單牆 bid/ask</span><span class="v flat">1 / 1</span></div>
+            <div class="ind-row"><span class="k">Heikin-Ashi 連續</span><span class="v flat">0</span></div>
+          </div>
+        </div>
+
+        <!-- HYPE — degraded / no data state -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-coin"><b>HYPE</b><span>HYPEUSDT</span></div>
+            <span class="status-pill na">無資料</span>
+          </div>
+          <div class="na-body">
+            Binance 現貨無此代號
+            <span class="code">Invalid symbol.</span>
+          </div>
+        </div>
+
+        <!-- MON — degraded / no data state -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-coin"><b>MON</b><span>MONUSDT</span></div>
+            <span class="status-pill na">無資料</span>
+          </div>
+          <div class="na-body">
+            Binance 現貨無此代號
+            <span class="code">Invalid symbol.</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

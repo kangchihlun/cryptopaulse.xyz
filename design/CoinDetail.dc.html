@@ -1,0 +1,169 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+
+    .dc-root {
+      --bg: #0a0d12;
+      --panel: #12161d;
+      --panel2: #151a22;
+      --border: #1f2733;
+      --bull: #3ddc84;
+      --bear: #ff5470;
+      --muted: #7b8794;
+      --text: #e6e9ef;
+      --accent: #3ec6ff;
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse 900px 420px at 50% -8%, rgba(62,198,255,0.10), transparent 60%),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 28px),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 28px),
+        var(--bg);
+      min-height: 100%;
+      padding: 28px 32px 64px;
+    }
+    .wrap { max-width: 1280px; margin: 0 auto; }
+
+    .back { font-size: 11px; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; margin-bottom: 10px; }
+    .h1-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .h1-row h1 { font-size: 20px; font-weight: 800; letter-spacing: 0.03em; margin: 0; }
+    .h1-row .sym { font-size: 12px; color: var(--muted); border: 1px solid var(--border); padding: 3px 8px; border-radius: 3px; }
+
+    .top-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 22px; }
+    .stat-box { border: 1px solid var(--border); background: var(--panel); border-radius: 4px; padding: 8px 14px; min-width: 130px; }
+    .stat-box .lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+    .stat-box .val { font-size: 18px; font-weight: 700; margin-top: 2px; }
+    .val.pos { color: var(--bull); } .val.neg { color: var(--bear); }
+
+    .range-group { display: flex; gap: 4px; margin-left: auto; }
+    .range-btn { font-size: 11px; font-weight: 600; padding: 6px 10px; border-radius: 3px; border: 1px solid var(--border); color: var(--muted); letter-spacing: 0.03em; }
+    .range-btn.active { border-color: var(--bull); color: var(--bull); background: rgba(61,220,132,0.12); }
+
+    .section-title { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px 2px; }
+    .section-title h2 { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin: 0; }
+    .section-title .rule { flex: 1; height: 1px; background: linear-gradient(90deg, var(--border), transparent); }
+    section { margin-bottom: 26px; }
+
+    .panel { position: relative; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--border); border-radius: 4px; padding: 16px; }
+    .hud-corner { position: absolute; width: 10px; height: 10px; border: 1.5px solid var(--accent); opacity: 0.65; }
+    .hud-corner.tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+    .hud-corner.tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+    .hud-corner.bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+    .hud-corner.br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+    .heatmap-frame { position: relative; height: 380px; border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
+    .heatmap-canvas {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(130px 60px at 6% 62%, rgba(61,220,132,.38), transparent 70%),
+        radial-gradient(170px 85px at 20% 38%, rgba(61,220,132,.30), transparent 70%),
+        radial-gradient(100px 55px at 33% 72%, rgba(255,84,112,.32), transparent 70%),
+        radial-gradient(150px 78px at 47% 33%, rgba(61,220,132,.34), transparent 70%),
+        radial-gradient(115px 58px at 60% 68%, rgba(255,84,112,.36), transparent 70%),
+        radial-gradient(160px 80px at 74% 42%, rgba(61,220,132,.28), transparent 70%),
+        radial-gradient(120px 62px at 87% 60%, rgba(255,84,112,.32), transparent 70%),
+        radial-gradient(140px 70px at 97% 46%, rgba(61,220,132,.30), transparent 70%),
+        linear-gradient(#0a0d12,#0a0d12);
+    }
+    .heatmap-scan { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 4px); mix-blend-mode: overlay; }
+    .heatmap-mid { position: absolute; left: 0; right: 0; top: 46%; border-top: 1px dashed rgba(230,233,239,0.4); }
+    .heatmap-mid-label { position: absolute; left: 10px; top: 46%; transform: translateY(-50%); font-size: 10px; color: var(--text); background: rgba(10,13,18,0.7); padding: 2px 6px; border-radius: 2px; border: 1px solid var(--border); }
+
+    .chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+    .chart-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 14px; }
+    .chart-panel .t { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    thead th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 10px; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px; }
+    tbody td { padding: 6px 10px; border-bottom: 1px solid rgba(31,39,51,0.5); }
+    tbody tr:hover { background: rgba(62,198,255,0.05); }
+    td.pos { color: var(--bull); } td.neg { color: var(--bear); } td.muted { color: var(--muted); }
+  </style>
+</helmet>
+
+<div class="dc-root">
+  <div class="wrap">
+
+    <div class="back">&larr; 回總覽</div>
+    <div class="h1-row"><h1>BTC 深度分析</h1><span class="sym">BTCUSDT · Perpl BTC1</span></div>
+
+    <div class="top-row">
+      <div class="stat-box"><div class="lbl">Perpl Mid</div><div class="val">$80,861.40</div></div>
+      <div class="stat-box"><div class="lbl">Momentum Bias</div><div class="val pos">7.0</div></div>
+      <div class="stat-box"><div class="lbl">Basis (vs Binance)</div><div class="val neg">-4.18 bps</div></div>
+      <div class="stat-box"><div class="lbl">Depth 檔數</div><div class="val">3</div></div>
+      <div class="range-group">
+        <span class="range-btn">30 分鐘</span>
+        <span class="range-btn active">2 小時</span>
+        <span class="range-btn">12 小時</span>
+        <span class="range-btn">24 小時</span>
+      </div>
+    </div>
+
+    <section>
+      <div class="section-title"><h2>Orderbook 買賣壓熱圖</h2><span class="rule"></span></div>
+      <div class="panel">
+        <span class="hud-corner tl"></span><span class="hud-corner tr"></span><span class="hud-corner bl"></span><span class="hud-corner br"></span>
+        <div class="heatmap-frame">
+          <div class="heatmap-canvas"></div>
+          <div class="heatmap-scan"></div>
+          <div class="heatmap-mid"></div>
+          <div class="heatmap-mid-label">mid · $80,861.40</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="chart-grid">
+        <div class="chart-panel">
+          <div class="t">Momentum Bias 走勢</div>
+          <svg width="100%" height="100" viewBox="0 0 480 100" preserveAspectRatio="none">
+            <line x1="0" y1="54" x2="480" y2="54" stroke="#1f2733" stroke-width="1"/>
+            <polyline points="0,66 53,66 107,62 160,62 213,60 267,60 320,63 373,63 427,20 480,20" fill="none" stroke="#3ddc84" stroke-width="1.6"/>
+          </svg>
+        </div>
+        <div class="chart-panel">
+          <div class="t">Basis (Perpl - Binance) 走勢</div>
+          <svg width="100%" height="100" viewBox="0 0 480 100" preserveAspectRatio="none">
+            <line x1="0" y1="20" x2="480" y2="20" stroke="#1f2733" stroke-width="1"/>
+            <polyline points="0,30 53,30 107,52 160,55 213,56 267,57 320,49 373,80 427,74 480,74" fill="none" stroke="#ff5470" stroke-width="1.6"/>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-title"><h2>最近 20 筆快照</h2><span class="rule"></span></div>
+      <div class="panel" style="padding:0; overflow-x:auto;">
+        <table>
+          <thead><tr><th>時間</th><th>mid</th><th>bid_usd</th><th>ask_usd</th><th>ask/bid</th><th>bias</th><th>basis(bps)</th></tr></thead>
+          <tbody>
+            <tr><td class="muted">15:08:44</td><td>$80,861.40</td><td class="pos">$840.95</td><td class="neg">$7,133.11</td><td>8.48</td><td class="pos">7.0</td><td>-4.18</td></tr>
+            <tr><td class="muted">15:08:43</td><td>$80,861.40</td><td class="pos">$2,074.00</td><td class="neg">$5,771.38</td><td>2.78</td><td class="pos">7.0</td><td>-4.18</td></tr>
+            <tr><td class="muted">15:08:42</td><td>$80,859.80</td><td class="pos">$6,275.49</td><td class="neg">$21,785.43</td><td>3.47</td><td class="neg">-6.4</td><td>-4.38</td></tr>
+            <tr><td class="muted">15:08:41</td><td>$80,869.55</td><td class="pos">$5,432.12</td><td class="neg">$25,430.02</td><td>4.68</td><td class="neg">-6.4</td><td>-3.17</td></tr>
+            <tr><td class="muted">15:08:39</td><td>$80,880.90</td><td class="pos">$4,996.30</td><td class="neg">$21,899.80</td><td>4.38</td><td class="neg">-5.8</td><td>-3.31</td></tr>
+            <tr><td class="muted">15:08:38</td><td>$80,881.00</td><td class="pos">$5,016.64</td><td class="neg">$23,295.19</td><td>4.64</td><td class="neg">-5.8</td><td>-3.30</td></tr>
+            <tr><td class="muted">15:08:37</td><td>$80,881.05</td><td class="pos">$20,046.34</td><td class="neg">$23,456.98</td><td>1.17</td><td class="neg">-6.1</td><td>-3.29</td></tr>
+            <tr><td class="muted">15:08:36</td><td>$80,881.70</td><td class="pos">$9,400.03</td><td class="neg">$22,446.26</td><td>2.39</td><td class="neg">-6.1</td><td>-3.21</td></tr>
+            <tr><td class="muted">15:08:34</td><td>$80,889.05</td><td class="pos">$5,357.12</td><td class="neg">$22,864.45</td><td>4.27</td><td class="neg">-6.8</td><td>-2.30</td></tr>
+            <tr><td class="muted">15:08:33</td><td>$80,889.05</td><td class="pos">$4,395.60</td><td class="neg">$17,938.78</td><td>4.08</td><td class="neg">-6.8</td><td>-2.30</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

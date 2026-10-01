@@ -1,0 +1,50 @@
+# CryptoPulse Monitor — Railway 部署用，Root Directory 為 repo 根目錄。
+#
+# 這不是普通的 `next start` 部署：這支專案改用自訂 Node.js server（server.ts，
+# 見 README.md「即時推播」），開了 /ws/momentum WebSocket 主動推播動量指標，
+# 啟動時還會先連 Postgres 把 BookSnapshot 歷史撈進記憶體（lib/bookCache.ts）。
+# 執行方式是 `tsx server.ts`，不是 `next start`——`.next` build 產物只放編譯好
+# 的頁面/API route，server.ts 本身跟它 import 的 lib/ 是用 tsx 在 runtime 直接
+# 轉譯執行，所以 runtime image 除了 .next 之外還要帶 server.ts + lib/ 原始碼。
+#
+# 秘密（POSTGRES_URL / TABLE_NAME）一律在 Railway 的 Variables 設定，
+# 不寫進 image（.dockerignore 已排除 .env*）。
+
+# ---- Stage 1: 裝完整依賴（含 devDependencies）+ next build -----------------
+FROM node:20-slim AS builder
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# design/、README.md、.env* 等在 .dockerignore 裡排除，不會進 build context。
+COPY . .
+RUN npm run build
+
+# ---- Stage 2: 只裝 production 依賴的 runtime image -------------------------
+FROM node:20-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# .next（next build 編譯好的頁面/API route）+ server.ts 跟它需要的原始碼。
+# app/、components/ 已經被 next build 編譯進 .next，production 模式的
+# Next.js 不會再讀原始碼，所以不用帶進 runtime image；lib/ 是 server.ts
+# 用 tsx 直接 import 的，一定要帶完整原始碼。
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/next.config.mjs ./next.config.mjs
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/server.ts ./server.ts
+COPY --from=builder /app/lib ./lib
+
+# Railway 會用自己的 PORT 環境變數注入實際對外的埠，server.ts 已經讀
+# process.env.PORT（見 lib 說明），這裡只是文件用途。
+EXPOSE 3000
+
+# 直接 exec tsx（而不是 `npm run start`）：npm 包一層當 PID 1 對 SIGTERM 的
+# 轉發在部分版本不可靠，這支專案剛修好 server.ts 自己收到 SIGTERM 要在
+# ~1.5 秒內乾淨退出（見 README.md），讓 Railway 重部署時的訊號直接進到
+# server.ts 自己的 handler，不要多繞一層。
+CMD ["node_modules/.bin/tsx", "server.ts"]

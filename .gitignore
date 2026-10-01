@@ -141,3 +141,18 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# --- CryptoPulse Monitor（原 web/.gitignore）---
+node_modules
+.next
+out
+.env
+.env.local
+*.tsbuildinfo
+next-env.d.ts
+
+# design/ 底下 seed-canvas.mjs 產生的完整頁面（內嵌 ~2MB 編輯器 payload，是
+# build 產物不是設計來源）——真正的設計內容是 .dc.html + canvas.json，那些
+# 才進版控，可隨時用 seed-canvas.mjs 重新產生 .html。
+design/*.html
+!design/*.dc.html

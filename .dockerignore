@@ -1,0 +1,26 @@
+# 秘密：絕不進 image（Railway 用 Variables 提供，見 web/.env 裡的清單）
+.env
+.env.*
+*.env
+
+# node / build 產物：容器內自己重新 npm ci / next build，不用帶進 context
+node_modules
+.next
+next-env.d.ts
+*.tsbuildinfo
+
+# git / IDE
+.git
+.gitignore
+
+# 設計稿：seed-canvas.mjs 產生的完整頁面內嵌 ~2MB 編輯器 payload，跟部署無關
+design
+
+# 文件
+*.md
+README.md
+SPEC.md
+
+Dockerfile
+dockerfile_web
+.dockerignore

@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  background-color: #0a0d12;
+  color: #e6e9ef;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f2733;
+  border-radius: 4px;
+}
+
+/* MethodologyAccordion：<details> 展開時把 summary 前面的箭頭轉 90 度。 */
+details.methodology[open] > summary .chevron {
+  transform: rotate(90deg);
+}
+details.methodology > summary::-webkit-details-marker {
+  display: none;
+}
+details.methodology > summary {
+  list-style: none;
+}
