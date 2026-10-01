@@ -1,5 +1,5 @@
 /**
- * lib/binanceFeed.ts — libs/feeds.py（perpl-single-hardcap-compare 分支）的 TypeScript 移植。
+ * lib/binanceFeed.ts — collector 端 Python 行情模組（feeds.py）的 TypeScript 移植。
  *
  * 跟 Python 版一樣：現貨成交 WS（<symbol>@trade，主動買賣方向靠 `!m` 判斷，
  * `m`=isBuyerMaker）+ K 線 WS（<symbol>@kline_INTERVAL）合併訂閱一條連線，
@@ -12,7 +12,7 @@ import WebSocket from "ws";
 const BINANCE_REST = "https://api.binance.com/api/v3";
 const BINANCE_WS = "wss://stream.binance.com:9443/stream";
 
-const TRADE_TTL_SEC = 600; // 秒；成交紀錄保留窗口（跟 libs/config.py 一致）
+const TRADE_TTL_SEC = 600; // 秒；成交紀錄保留窗口（跟 Python 版設定一致）
 const KLINE_MAX = 500;
 const KLINE_BOOT = 200;
 const OB_POLL_INTERVAL_MS = 2000;

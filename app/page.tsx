@@ -33,8 +33,8 @@ export default async function DashboardPage() {
 
       {coins.length === 0 && (
         <div className="rounded-md border border-border bg-panel text-muted text-sm p-3 mb-4">
-          No signal_snapshot data in the past hour — check whether perpl_snapshot_collector.py
-          (the Railway service on the perpl-single-hardcap-compare branch) is still running, or
+          No signal_snapshot data in the past hour — check whether the snapshot collector
+          is still running, or
           check the server's startup log for "[bookCache] bootstrap failed".
         </div>
       )}

@@ -6,8 +6,8 @@ import { COLORS } from "@/lib/theme";
 
 /**
  * MomentumPanel — 不再讀 Postgres 的 BookSnapshot.momentum_bias（那是折算後的
- * 單一分數），改成直接連 lib/marketState.ts + lib/indicators.ts（libs/feeds.py
- * + libs/indicators.py 的 TS 移植）即時監聽幣安主動買賣算出的完整指標拆解。
+ * 單一分數），改成直接連 lib/marketState.ts + lib/indicators.ts（Python 版
+ * feeds.py + indicators.py 的 TS 移植）即時監聽幣安主動買賣算出的完整指標拆解。
  * 每個指標分開顯示，不是只看折算後的單一 bias 數字。
  *
  * 2026-09-05：資料傳輸從「每 4 秒 fetch /api/momentum」的 polling 改成

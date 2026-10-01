@@ -1,6 +1,6 @@
 /**
- * lib/indicators.ts — libs/indicators.py（perpl-single-hardcap-compare 分支）的
- * TypeScript 移植，逐函式對照，常數也照抄 libs/config.py。
+ * lib/indicators.ts — collector 端 Python 指標模組（indicators.py）的
+ * TypeScript 移植，逐函式對照，常數也照抄原本的設定。
  *
  * 跟原本 Postgres 版最大的差別：原本只存折算後的單一 momentum_bias，這裡把
  * obi/cvd/macd/rsi/vwap/poc/walls/ema 等每個分量都個別算出、個別回傳

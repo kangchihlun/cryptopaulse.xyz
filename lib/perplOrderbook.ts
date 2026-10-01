@@ -1,8 +1,8 @@
 /**
- * lib/perplOrderbook.ts — TS 移植 tests/perpl/perpl_common.py 的 PerplMarketData
+ * lib/perplOrderbook.ts — TS 移植 Python 版 PerplMarketData 的
  * 訂單簿訂閱邏輯（目前只做 BTC），給熱圖的 orderbook ladder 疊圖用。
  *
- * 2026-09-05 查證：使用者原本要求「在前端訂閱 perpl BTC 的訂單簿」，實測發現
+ * 為什麼不在前端直接訂閱：實測發現
  * Perpl 的 market-data WS（wss://app.perpl.xyz/ws/v1/market-data）會依 Origin
  * header 擋非 app.perpl.xyz 的連線（帶假 Origin 連線直接回 403；不帶 Origin
  * 或帶 app.perpl.xyz 自己的 Origin 才連得上）。瀏覽器發出的 WS 連線一定會帶

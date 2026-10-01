@@ -8,17 +8,15 @@
  *
  * globalThis 掛載是必要的：Next.js dev 模式每次程式碼變更都會重新 require 模組，
  * 沒有這層保護的話每次熱重載都會多開一組 WS 連線，舊連線變孤兒但仍佔用資源
- * （這正是 conditional-exit 分支查過的「重複掛單/連線」教訓的同類問題）。
  */
 import { BinanceState, bootstrapKlines, startObPoller, startTradeAndKlineFeed } from "./binanceFeed";
 import { computeBreakdown, type IndicatorBreakdown } from "./indicators";
 
-// tests/perpl/perpl_common.py 的 COINS——Perpl 支援的全部市場。
+// Perpl 支援的全部市場。
 export const COINS = ["BTC", "ETH", "HYPE", "MON", "ZEC", "SOL"] as const;
 export type Coin = (typeof COINS)[number];
 
-// perpl-single-hardcap-compare 分支 libs/config.py 的 BINANCE_SYMBOL 只放了 BTC
-// （該分支 TRADE_COINS 只交易 BTC，沒理由訂閱其他幣種）。這裡要做「多幣種動量
+// collector 端只訂閱 BTC 的幣安行情。這裡要做「多幣種動量
 // 比較」，比照 Binance 現貨代號慣例補上其餘 5 幣種——MON 是否已在 Binance 現貨
 // 掛牌未經驗證，訂閱失敗時只會讓該幣種 bootError 有值、WS 進入原地重連迴圈，
 // 不影響其他幣種收集，面板上會顯示「無資料」而不是讓整個 process 掛掉。

@@ -1,4 +1,4 @@
-# 秘密：絕不進 image（Railway 用 Variables 提供，見 web/.env 裡的清單）
+# 秘密：絕不進 image（部署平台用環境變數提供，見 README）
 .env
 .env.*
 *.env

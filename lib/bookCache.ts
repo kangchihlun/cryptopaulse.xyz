@@ -24,7 +24,7 @@
  */
 import { fetchTicks, type SnapshotTick, type CoinSummary } from "./db";
 
-// 跟 tests/perpl/perpl_common.py 的 COINS 一致（lib/marketState.ts 也是同一份）。
+// 跟 lib/marketState.ts 的 COINS 一致。
 const COINS_TO_TRACK = ["BTC", "ETH", "HYPE", "MON", "ZEC", "SOL"];
 
 // 阻塞階段先填多少——覆蓋熱圖預設時窗，讓 server 幾乎立刻就能開始服務。
@@ -127,7 +127,7 @@ class BookCache {
     }
     try {
       // 從上次抓到的最新一筆往前退 1 秒重疊查詢，避免邊界那一筆卡在中間漏掉
-      // （跟 collector 端 trade_cache.py 的 OVERLAP_MS 同精神）。
+      // （跟 collector 端快取的 overlap 回補同精神）。
       const sinceMs = entry.lastFetchMs - 1000;
       const fresh = await fetchTicks(coin, sinceMs, 20_000);
       if (fresh.length === 0) return;

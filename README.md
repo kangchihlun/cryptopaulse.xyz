@@ -60,7 +60,7 @@ on the other.**
 
 ### 1. Orderbook heatmap (Perpl, read from Postgres)
 
-The collector (`perpl_snapshot_collector.py` + `libs/feeds.py`) keeps batch-writing Perpl
+The collector (`perpl_snapshot_collector.py` + `feeds.py`) keeps batch-writing Perpl
 orderbook snapshots into the Postgres table `"BookSnapshot"`. The name is mixed-case, so SQL
 must double-quote it. Each row has `kind='signal_snapshot'`, `ts` (ms) and `raw` (JSONB).
 `lib/db.ts` holds the low-level Postgres queries (`fetchTicks` / `fetchCoinSummaries` /
@@ -113,7 +113,7 @@ redeploying it.
 ### 2. Momentum comparison panel (Binance, live stream, no DB)
 
 `components/MomentumPanel.tsx` **never reads Postgres**. It runs a direct TypeScript port of the
-collector's `libs/feeds.py` + `libs/indicators.py`:
+collector's `feeds.py` + `indicators.py`:
 
 - `lib/binanceFeed.ts` opens one Binance WebSocket per coin, combining the `<symbol>@trade` and
   `<symbol>@kline_1m` streams. For every trade it stores `isBuy` (`!isBuyerMaker`, meaning the

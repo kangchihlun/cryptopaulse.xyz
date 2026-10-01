@@ -1,16 +1,14 @@
 /**
  * Postgres 連線層 — 直讀 perpl_snapshot_collector.py 寫入的 BookSnapshot 表。
  *
- * 表結構沿用 tests/perpl/trade_cache.py 的 TradeCache（見
- * perpl-single-hardcap-compare 分支）：
+ * 表結構（跟 collector 端的快取表一致）：
  *   kind TEXT, key TEXT, ts BIGINT(ms), raw JSONB
  * 這裡只讀 kind='signal_snapshot' 這個分區；raw 內還有一層 raw.kind="tick"，
- * 是每筆快照自己的型別欄位，跟外層 TradeCache 的 kind 是兩個不同層級，
+ * 是每筆快照自己的型別欄位，跟外層的 kind 是兩個不同層級，
  * 不要混淆。
  *
- * TABLE_NAME 預設是 trade_cache.py 的 fallback "perpl_trades"，但實測
- * snapshot collector 這個 Railway service 實際寫入的表是 "BookSnapshot"
- * （大小寫混合，需雙引號），已在 .env 設好，此處僅留預設值以防環境變數缺漏。
+ * snapshot collector 實際寫入的表是 "BookSnapshot"（大小寫混合，需雙引號），
+ * 可用 TABLE_NAME 環境變數覆寫，此處預設值即為 "BookSnapshot"。
  */
 import { Pool } from "pg";
 
@@ -24,7 +22,7 @@ function getPool(): Pool {
     const url = process.env.POSTGRES_URL;
     if (!url) {
       throw new Error(
-        "POSTGRES_URL is not set — add the Railway Postgres connection string to web/.env(.local)"
+        "POSTGRES_URL is not set — add the Postgres connection string to .env(.local)"
       );
     }
     pool = new Pool({
